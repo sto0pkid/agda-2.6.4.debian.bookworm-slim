@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -euo pipefail
+
+MODE="$1"
+CHECKFILE=""
+
+case "$MODE" in
+  proof)
+    CHECKFILE="Check.agda"
+    ;;
+  disproof)
+    CHECKFILE="CheckNeg.agda"
+    ;;
+  *)
+    echo "Usage: $0 [proof|disproof]"
+    exit 1
+    ;;
+esac
+
+cp /input/goal /work/Input/Goal.agda
+cp /input/proof /work/Input/Proof.agda
+
+OUTPUT="/output/output.txt"
+ERROR="/output/error.txt"
+OUT_DIR="/output"
+
+if agda --safe --cubical --no-exact-split --no-main "$CHECKFILE" >"$OUTPUT" 2>"$ERROR"; then
+  jq -n --arg out "$(cat "$OUTPUT")" '{"success": true, "output": $out}' > "$OUT_DIR/result.json"
+else
+  jq -n \
+    --arg out "$(cat "$OUTPUT")" \
+    --arg err "$(cat "$ERROR")" \
+    '{"success": false, "output": $out, "error": $err}' > "$OUT_DIR/result.json"
+fi
